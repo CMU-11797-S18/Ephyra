@@ -1,5 +1,6 @@
 # Team 42
-Team Members: Harini, Ashwin, Pramati, Madhura
+Team Members: Harini, Ashwin, Pramati, Madhura   
+
 Progress Update Links:
 
 Proposal - https://docs.google.com/document/d/12sNBk9yBbfHV0QIJUpIOXxBZWo8kqnVRiG8ka2W1_cY/edit?usp=sharing    
