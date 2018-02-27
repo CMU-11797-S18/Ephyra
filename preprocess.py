@@ -6,6 +6,8 @@ import pickle
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from gensim.models import KeyedVectors
+from scipy.sparse import save_npz, load_npz
+from __future__ import print_function
 
 dataFile = json.loads(open("data/BioASQ-trainingDataset6b.json","r").read().strip())
 word_vectors = KeyedVectors.load_word2vec_format('models/wikipedia-pubmed-and-PMC-w2v.bin', binary=True)
@@ -33,6 +35,7 @@ def createDump():
     Creates a dump of queries, snippets and documents in 
     '''
     queries = []
+    ideal_answers = []
     snippets = []
     documents = []
     queries_w2v = []
@@ -44,6 +47,9 @@ def createDump():
         queryVal = re.sub("["+string.punctuation.replace("\'","\"")+"]","",query['body']).lower().split()
         queries.append([queryVal])
 #        pdb.set_trace()
+        idealAnsVal = re.sub("["+string.punctuation.replace("\'","\"")+"]","",query['ideal_answer'][0]).lower().split()
+        ideal_answers.append([idealAnsVal])
+        
         queries_w2v.append(getAveragedWordVectors([queryVal]))
         if 'snippets' in query.keys():
             snippetsVal = [re.sub("["+string.punctuation.replace("\'","\"")+"]","",i['text']).lower().split() for i in query['snippets']]
@@ -58,10 +64,12 @@ def createDump():
             documents.append([])
             snippets_w2v.append(np.zeros((50,word_vectors.vector_size)))
 #            documents_w2v.append(np.zeros((50,word_vectors.vector_size)))
+        
         count += 1
-        print count
+        print(count)
 
     pickle.dump(queries,open("data/queries.p","wb"))
+    pickle.dump(ideal_answers,open("data/ideal_answers.p","wb"))
     pickle.dump(snippets,open("data/snippets.p","wb"))
     pickle.dump(documents,open("data/documents.p","wb"))
     np.save(open("data/queries_w2v.npy","w"),queries_w2v)
@@ -69,6 +77,8 @@ def createDump():
 #    np.save(open("data/documents_w2v.npy","w"),documents_w2v)
 
 def createTFIDF():
+    '''
+    Creates TFIDF vectors
     '''
     '''
     queries = []
@@ -82,6 +92,7 @@ def createTFIDF():
             if len(snippets_lookup) == 0:
                 continue
             else:
+#                pdb.set_trace()
                 snippets_lookup.append(len(query['snippets'])+snippets_lookup[-1])
         else:
             snippets_lookup.append(snippets_lookup[-1]+1)
@@ -95,13 +106,18 @@ def createTFIDF():
     queries_tfidf = X_train[:len(queries),:]
     snippets_tfidf = X_train[len(queries):,:]
 
-    del snippets_lookup[0]
-
-    pickle.dump(queries_tfidf,open("queries_tfidf.p","wb"))
-    pickle.dump(snippets_tfidf,open("snippets_tfidf.p","wb"))
-    pickle.dump(snippets_lookup,open("snippets_lookup.p", "wb"))
-
+#      del snippets_lookup[0]
+    np.save(open("data/snippets_lookup.npy", "wb"), snippets_lookup)
+    
+    save_npz(open("data/queries_tfidf.npz","wb"),queries_tfidf)
+    save_npz(open("data/snippets_tfidf.npz","wb"),snippets_tfidf)
+    '''
+    queries_tfidf = load_npz("data/queries_tfidf.npz")
+    snippets_tfidf = load_npz("data/snippets_tfidf.npz")
+    snippets_lookup = np.load("data/snippets_lookup.npy")
+    
     return queries_tfidf, snippets_tfidf, snippets_lookup
 
 if __name__ == '__main__':
-    createDump()
+#    createDump()
+    createTFIDF()
