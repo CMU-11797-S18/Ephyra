@@ -12,6 +12,7 @@ from sklearn.metrics import average_precision_score
 import itertools
 import pickle
 import pdb
+from evaluate import evaluateResults as evalRes
 
 
 class RankSVM(object):
@@ -60,11 +61,10 @@ if __name__ == '__main__':
     meta_split = int(len(train_meta)*0.8)
     
     train_X, train_y = full_X[:data_split+1], full_y[:data_split+1]
-    test_X, test_y = full_X[data_split+1:], full_y[data_split+1:]
     
 #    rank_svm.train(train_X, train_y)
 #    rank_svm.save_model('rank_svm.p')
-    
+    '''
     rank_svm = RankSVM()
     rank_svm.load_model('rank_svm.p')
     rank_list = []
@@ -81,10 +81,13 @@ if __name__ == '__main__':
         rank_list.append(ranked_docs)
     
     pickle.dump(rank_list, open('test_rank_results.p','w'))
+    '''
+    pred_ranks = pickle.load(open('test_rank_results.p'))
+    gold_ranks = pickle.load(open('data/score_gt_unweighted.p'))[meta_split+1:]
     
-#    preds = rank_svm.test(test_X)
-#    train_lookup_snippets = pickle.load(open('pairwise_train_snippets_lookup.list','rb'))
-#    print('Average Precision Score : %s ' %(average_precision_score(test_y, preds)))
-#    pdb.set_trace()
+    p1, p3, p5, p10 = evalRes(gold_ranks, pred_ranks)
+    print('P@1 : %s, P@3 : %s, P@5 : %s, P@10 : %s' %(p1,p3,p5,p10))
+    
+    
     
     

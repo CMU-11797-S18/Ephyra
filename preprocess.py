@@ -1,3 +1,4 @@
+from __future__ import print_function
 import json
 import re
 import pdb
@@ -7,10 +8,10 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from gensim.models import KeyedVectors
 from scipy.sparse import save_npz, load_npz
-from __future__ import print_function
+
 
 dataFile = json.loads(open("data/BioASQ-trainingDataset6b.json","r").read().strip())
-word_vectors = KeyedVectors.load_word2vec_format('models/wikipedia-pubmed-and-PMC-w2v.bin', binary=True)
+#word_vectors = KeyedVectors.load_word2vec_format('models/wikipedia-pubmed-and-PMC-w2v.bin', binary=True)
 
 def getAveragedWordVectors(doc_list):
     '''

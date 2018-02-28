@@ -1,3 +1,4 @@
+from __future__ import print_function
 from gensim.summarization.bm25 import get_bm25_weights
 import numpy as np 
 import scipy
@@ -5,7 +6,6 @@ import string
 import itertools
 from preprocess import *
 import pdb
-from __future__ import print_function
 import pickle
 
 query_w2v = np.load("data/queries_w2v.npy")
@@ -87,7 +87,7 @@ class createData():
         if "BM25" in self.featureList:
             return bm25, featureVec
         else:
-            return bm25[1], featureVec
+            return bm25, featureVec
 
 def create_pairwise_dataset(queries, ideal_answers, snippets, featureList):
     '''
@@ -118,7 +118,7 @@ def create_pairwise_dataset(queries, ideal_answers, snippets, featureList):
                     x2 = np.array([bm25[0][k]] + featureVec[k].tolist())
                     X.append(x1-x2)
                     
-                    if bm25[1][j] > bm25[1][k]:
+                    if 0.8*bm25[1][j]+0.2*bm25[0][j] > bm25[1][k]+0.2*bm25[0][k]:
                         y.append(1.)
                     else:
                         y.append(-1.)
@@ -129,7 +129,7 @@ def create_pairwise_dataset(queries, ideal_answers, snippets, featureList):
                     x2 = np.array([bm25[k]] + featureVec[k].tolist())
                     X.append(x1-x2)
                     
-                    if bm25[j] > bm25[k]:
+                    if 0.8*bm25[1][j]+0.2*bm25[0][j] > bm25[1][k]+0.2*bm25[0][k]:
                         y.append(1.)
                     else:
                         y.append(-1.)
@@ -164,4 +164,15 @@ if __name__ == '__main__':
 #    pickle.dump(cosSim_all,open("data/BM25_all.p","wb"))
     
 #    bm25_all = pickle.load(open("data/BM25_all.p","rb"))
+    train_snippets_lookup = pickle.load(open('pairwise_train_snippets_lookup.list'))
+    train_snippets_meta = [(0,0,0,0)]
+    for query_idx, num_snippets in train_snippets_lookup:
+        #pdb.set_trace()
+        data_idx_s = train_snippets_meta[-1][-1]
+        data_idx_e = data_idx_s + (num_snippets * (num_snippets-1)) 
+        train_snippets_meta.append((query_idx, num_snippets, data_idx_s, data_idx_e))
+
+    del train_snippets_meta[0]
+
+    pickle.dump(train_snippets_meta, open('train_snippets_meta.list','wb'))
     
