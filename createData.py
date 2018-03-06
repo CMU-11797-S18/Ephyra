@@ -7,16 +7,17 @@ import itertools
 from preprocess import *
 import pdb
 import pickle
+import sys
 
 query_w2v = np.load("data/queries_w2v.npy")
 snippets_w2v = np.load("data/snippets_w2v.npy")
         
 class createData():
     """docstring for createData"""
-    def __init__(self, featureList):
+    def __init__(self, featureList, task):
         self.availableFeatures = ["BM25", "cosSim"]
         self.featureList = featureList
-        self.QueryTFIDF, self.SnippetsTFIDF, self.SnippetsLookup = createTFIDF()
+        self.QueryTFIDF, self.SnippetsTFIDF, self.SnippetsLookup = createTFIDF([],task)
 
 
     def getTFIDF(self, docListLen, idx):
@@ -26,11 +27,16 @@ class createData():
         return queryRep, snippetRep
 
     def getBM25(self, query, ideal_ans, docList):
-        scores = np.array(get_bm25_weights(query+ideal_ans+docList))
-        BM25ScoresQuery = np.array(scores[0][2:])
-        BM25ScoresIdealAns = np.array(scores[1][2:])
-#        pdb.set_trace()
-        return BM25ScoresQuery,BM25ScoresIdealAns
+        if len(ideal_ans) != 0:
+            scores = np.array(get_bm25_weights(query+ideal_ans+docList))
+            BM25ScoresQuery = np.array(scores[0][2:])
+            BM25ScoresIdealAns = np.array(scores[1][2:])
+    #        pdb.set_trace()
+            return BM25ScoresQuery,BM25ScoresIdealAns
+        else:
+            scores = np.array(get_bm25_weights(query + docList))
+            BM25ScoresQuery = np.array(scores[0][1:])
+            return BM25ScoresQuery, []
 
     def getCosSim(self, query, docList, idx):
         cosSimVec = []
@@ -72,9 +78,12 @@ class createData():
         return w2v
         
 
-    def getFeatureVectors(self, query, idealAns, docList, idx):
+    def getFeatureVectors(self, query, idealAns, docList, idx, task):
         featureVec = []
-        bm25 = self.getBM25(query,idealAns, docList)
+        if 'train' in task:
+            bm25 = self.getBM25(query,idealAns, docList)
+        else:
+            bm25 = self.getBM25(query, [], docList)
         for feature in self.featureList:
             if feature == "cosSim":
                 cosSim = self.getCosSim(query,docList, idx)
@@ -89,11 +98,11 @@ class createData():
         else:
             return bm25, featureVec
 
-def create_pairwise_dataset(queries, ideal_answers, snippets, featureList):
+def create_pairwise_dataset(queries, ideal_answers, snippets, featureList, task):
     '''
     Method which creates the pairwise dataset for RankSVM
     '''
-    cd = createData(featureList)
+    cd = createData(featureList, task)
     bm25_flag = False
     if "BM25" in featureList:
         bm25_flag = True
@@ -105,57 +114,73 @@ def create_pairwise_dataset(queries, ideal_answers, snippets, featureList):
     for i in range(len(queries)):
 #        pdb.set_trace()
         num_snippets = len(snippets[i])
+        pair_count = 0
         if num_snippets > 0:
-            bm25, featureVec = cd.getFeatureVectors(queries[i], ideal_answers[i], snippets[i], i)
-#            pdb.set_trace()
+            bm25, featureVec = cd.getFeatureVectors(queries[i], ideal_answers[i], snippets[i], i, task)
+            # pdb.set_trace()
             snippet_pairs = itertools.permutations(range(featureVec.shape[0]),2)
-            train_snippets_lookup.append((i, featureVec.shape[0]))
+            # train_snippets_lookup.append((i, featureVec.shape[0]))
     #        pdb.set_trace()
             for j,k in snippet_pairs:
+                pair_count += 1
                 if bm25_flag is True:
+    #                pdb.set_trace()
+                    if num_snippets > 1:
+                        x1 = np.array([bm25[0][j]] + featureVec[j].tolist())
+                        x2 = np.array([bm25[0][k]] + featureVec[k].tolist())
+                        X.append(x1-x2)
+                    else:
+                        X.append(np.array([bm25[0][j]] + featureVec[j].tolist()))
+
+                    if 'train' in task:
+                        if 0.9*bm25[1][j]+0.1*bm25[0][j] > 0.9*bm25[1][k]+0.1*bm25[0][k]:
+                            y.append(1.)
+                        else:
+                            y.append(-1.)
+
+                else:
     #                pdb.set_trace()
                     x1 = np.array([bm25[0][j]] + featureVec[j].tolist())
                     x2 = np.array([bm25[0][k]] + featureVec[k].tolist())
                     X.append(x1-x2)
-                    
-                    if 0.8*bm25[1][j]+0.2*bm25[0][j] > bm25[1][k]+0.2*bm25[0][k]:
-                        y.append(1.)
-                    else:
-                        y.append(-1.)
-                    
-                else:
-    #                pdb.set_trace()
-                    x1 = np.array([bm25[j]] + featureVec[j].tolist())
-                    x2 = np.array([bm25[k]] + featureVec[k].tolist())
-                    X.append(x1-x2)
-                    
-                    if 0.8*bm25[1][j]+0.2*bm25[0][j] > bm25[1][k]+0.2*bm25[0][k]:
-                        y.append(1.)
-                    else:
-                        y.append(-1.)
+
+
+                    if 'train' in task:
+                        if 0.9*bm25[1][j]+0.1*bm25[0][j] > 0.9*bm25[1][k]+0.1*bm25[0][k]:
+                            y.append(1.)
+                        else:
+                            y.append(-1.)
+            if i == 0:
+                train_snippets_lookup.append((i, featureVec.shape[0], 0, pair_count))
+            else:
+                s_idx = train_snippets_lookup[-1][-1]
+                train_snippets_lookup.append((i, featureVec.shape[0], s_idx, s_idx+pair_count))
                     
         count += 1
         print(count)
     
     X = np.array(X)
-    y = np.array(y)
-    np.save('pairwise_trainX_6b.npy', X)
-    np.save('pairwise_trainy_6b.npy', y)
-    pickle.dump(train_snippets_lookup, open('pairwise_train_snippets_lookup.list','wb'))
+    np.save('pairwise_trainX_' + task + '.npy', X)
     print('X.shape : ', X.shape)
-    print('y.shape : ', y.shape)
+
+    if 'train' in task:
+        y = np.array(y)
+        np.save('pairwise_trainy_' + task + '.npy', y)
+        print('y.shape : ', y.shape)
+
+    pickle.dump(train_snippets_lookup, open('pairwise_train_snippets_lookup_'+task+'.list','wb'))
     
 
 if __name__ == '__main__':
-    
-    queries_all = pickle.load(open("data/queries.p","rb"))
-    snippets_all = pickle.load(open("data/snippets.p","rb"))
-    ideal_answers_all = pickle.load(open("data/ideal_answers.p","rb"))
+    task = sys.argv[1]
+    queries_all = pickle.load(open("data/queries_"+task+".p","rb"))
+    snippets_all = pickle.load(open("data/snippets_"+task+".p","rb"))
+    ideal_answers_all = pickle.load(open("data/ideal_answers_"+task+".p","rb"))
     featureList = ["BM25","cosSim","tfidfDot"]
 #    bm25_all = []
 #    cosSim_all = []
 #    cd = createData(featureList)
-    create_pairwise_dataset(queries_all, ideal_answers_all, snippets_all, featureList)
+    create_pairwise_dataset(queries_all, ideal_answers_all, snippets_all, featureList, task)
 #    for i in range(len(queries_all)):
 #        query = queries_all[i]
 #        snippets = snippets_all[i]
@@ -164,15 +189,19 @@ if __name__ == '__main__':
 #    pickle.dump(cosSim_all,open("data/BM25_all.p","wb"))
     
 #    bm25_all = pickle.load(open("data/BM25_all.p","rb"))
-    train_snippets_lookup = pickle.load(open('pairwise_train_snippets_lookup.list'))
-    train_snippets_meta = [(0,0,0,0)]
-    for query_idx, num_snippets in train_snippets_lookup:
-        #pdb.set_trace()
-        data_idx_s = train_snippets_meta[-1][-1]
-        data_idx_e = data_idx_s + (num_snippets * (num_snippets-1)) 
-        train_snippets_meta.append((query_idx, num_snippets, data_idx_s, data_idx_e))
-
-    del train_snippets_meta[0]
-
-    pickle.dump(train_snippets_meta, open('train_snippets_meta.list','wb'))
+#     train_snippets_lookup = pickle.load(open("pairwise_train_snippets_lookup_"+task+".list"))
+#     train_snippets_meta = [(0,0,0,0)]
+#     for query_idx, num_snippets in train_snippets_lookup:
+#         #pdb.set_trace()
+#         if num_snippets > 1:
+#             data_idx_s = train_snippets_meta[-1][-1]
+#             data_idx_e = data_idx_s + ((num_snippets * (num_snippets-1))/2)
+#         else:
+#             data_idx_s = train_snippets_meta[-1][-1]
+#             data_idx_e = data_idx_s + 1
+#         train_snippets_meta.append((query_idx, num_snippets, data_idx_s, data_idx_e))
+#
+#     del train_snippets_meta[0]
+#
+#     pickle.dump(train_snippets_meta, open("train_snippets_meta_"+task+".list","wb"))
     
