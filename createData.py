@@ -9,9 +9,9 @@ import pdb
 import pickle
 import sys
 
-query_w2v = np.load("data/queries_w2v.npy")
-snippets_w2v = np.load("data/snippets_w2v.npy")
-        
+query_w2v = np.load("data/queries_w2v_5b_test.npy")
+snippets_w2v = np.load("data/snippets_w2v_5b_test.npy")
+
 class createData():
     """docstring for createData"""
     def __init__(self, featureList, task):
@@ -68,15 +68,18 @@ class createData():
     def getWord2Vec(self, query, docList, idx):
         w2v = []
         queryW2V = query_w2v[idx]
-        snippetsW2V = snippets_w2v[idx: idx+len(docList), :]
+        snippetsW2V = snippets_w2v[idx]
         
         for i in range(len(docList)):
             snippetW2V = snippetsW2V[i]
-            w2v.append(scipy.spatial.distance.cosine(queryW2V,snippetW2V))
-        
+            w2v.append(np.nan_to_num(scipy.spatial.distance.cosine(queryW2V,snippetW2V)))
+        # pdb.set_trace()
         w2v = np.vstack(w2v)
         return w2v
-        
+
+    def getSnippetLen(self, docList):
+        snippet_lens = np.array([float(len(doc)) for doc in docList])
+        return snippet_lens.reshape((len(snippet_lens),1))
 
     def getFeatureVectors(self, query, idealAns, docList, idx, task):
         featureVec = []
@@ -91,7 +94,20 @@ class createData():
             if feature == "tfidfDot":
                 tfidf = self.get_tfidf_dot(docList, idx)
                 featureVec.append(tfidf)
+            if feature == "w2v":
+                # pdb.set_trace()
+                w2v = self.getWord2Vec(query, docList, idx)
+                featureVec.append(w2v)
+            if feature == "snippet_len":
+                # pdb.set_trace()
+                snippet_len = self.getSnippetLen(docList)
+                featureVec.append(snippet_len)
+            if feature == "log_tfidf":
+                tfidf = self.get_tfidf_dot(docList, idx)
+                # pdb.set_trace()
+                featureVec.append(np.nan_to_num(np.log(tfidf)))
 
+        # pdb.set_trace()
         featureVec = np.hstack(featureVec)
         if "BM25" in self.featureList:
             return bm25, featureVec
@@ -126,27 +142,29 @@ def create_pairwise_dataset(queries, ideal_answers, snippets, featureList, task)
                 if bm25_flag is True:
     #                pdb.set_trace()
                     if num_snippets > 1:
-                        x1 = np.array([bm25[0][j]] + featureVec[j].tolist())
-                        x2 = np.array([bm25[0][k]] + featureVec[k].tolist())
+                        # pdb.set_trace()
+                        x1 = np.array([bm25[0][j]] + [np.nan_to_num(np.log(bm25[0][j]))] + featureVec[j].tolist())
+                        x2 = np.array([bm25[0][k]] + [np.nan_to_num(np.log(bm25[0][k]))] + featureVec[k].tolist())
                         X.append(x1-x2)
                     else:
-                        X.append(np.array([bm25[0][j]] + featureVec[j].tolist()))
+                        # pdb.set_trace()
+                        X.append(np.array([bm25[0][j]] + [np.nan_to_num(np.log(bm25[0][j]))] + featureVec[j].tolist()))
 
                     if 'train' in task:
-                        if 0.9*bm25[1][j]+0.1*bm25[0][j] > 0.9*bm25[1][k]+0.1*bm25[0][k]:
+                        if 1*bm25[1][j]+0*bm25[0][j] > 1*bm25[1][k]+0*bm25[0][k]:
                             y.append(1.)
                         else:
                             y.append(-1.)
 
                 else:
     #                pdb.set_trace()
-                    x1 = np.array([bm25[0][j]] + featureVec[j].tolist())
-                    x2 = np.array([bm25[0][k]] + featureVec[k].tolist())
+                    x1 = np.array([bm25[0][j]] + [np.nan_to_num(np.log(bm25[0][j]))] + featureVec[j].tolist())
+                    x2 = np.array([bm25[0][k]] + [np.nan_to_num(np.log(bm25[0][k]))] + featureVec[k].tolist())
                     X.append(x1-x2)
 
 
                     if 'train' in task:
-                        if 0.9*bm25[1][j]+0.1*bm25[0][j] > 0.9*bm25[1][k]+0.1*bm25[0][k]:
+                        if 1*bm25[1][j]+0*bm25[0][j] > 1*bm25[1][k]+0*bm25[0][k]:
                             y.append(1.)
                         else:
                             y.append(-1.)
@@ -176,7 +194,7 @@ if __name__ == '__main__':
     queries_all = pickle.load(open("data/queries_"+task+".p","rb"))
     snippets_all = pickle.load(open("data/snippets_"+task+".p","rb"))
     ideal_answers_all = pickle.load(open("data/ideal_answers_"+task+".p","rb"))
-    featureList = ["BM25","cosSim","tfidfDot"]
+    featureList = ["BM25","cosSim","tfidfDot","w2v","snippet_len","log_tfidf"]
 #    bm25_all = []
 #    cosSim_all = []
 #    cd = createData(featureList)
