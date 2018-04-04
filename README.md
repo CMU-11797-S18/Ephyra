@@ -16,3 +16,5 @@ Mar 7th Update - https://docs.google.com/presentation/d/1z4w4xcdksT1UpQOCphezxX0
 Mar 21st Update - https://docs.google.com/presentation/d/1E9wzhVd_SUDC0cplc7ZcwggdoySk8SNOR_yl98md9Mg/edit?usp=sharing
 
 Mar 28th Update - https://docs.google.com/presentation/d/1Z8BqtOyQLAAvR1NR1dEY-rJszVa4L-2M2554lj3yprw/edit?usp=sharing
+
+Apr 4th Update - https://docs.google.com/presentation/d/1Tfp4suSjnDDhEzFets_mEsRWOXsSBibIm8wX6QrvQBQ/edit?usp=sharing
