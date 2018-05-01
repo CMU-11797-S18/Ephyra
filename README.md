@@ -22,3 +22,5 @@ Apr 4th Update - https://docs.google.com/presentation/d/1Tfp4suSjnDDhEzFets_mEsR
 Apr 11th Update - https://docs.google.com/presentation/d/1wP_9ArV1P9wGopqCY7k8ukUWIjmwFsbaJdK-_fmJmTo/edit?usp=sharing
 
 Apr 18th Update - https://docs.google.com/presentation/d/1ImMPGxBmTQi9Dv7ro02Rj-CJzBxeR8EF9tQIPPKkE0c/edit?usp=sharing
+
+Apr 25th Update - https://docs.google.com/presentation/d/1KfvIGdwLnBAiriC4SXwaZKSRTWDAxTMFI-Po8i-0SHo/edit?usp=sharing
